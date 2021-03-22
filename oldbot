@@ -16,7 +16,7 @@ from datetime import datetime
 
 
 pc_vardi=['/.Kaiju', '/.Ēnaudējs', '/.Ahti', '/.Lāsts', '/.Džims']
-TOKEN = "763523696:AAEREYsuGeR9287nBbulA4-wafRaAA6-ZVw"
+TOKEN = "xxxxxx"
 URL = "https://api.telegram.org/bot{}/".format(TOKEN)
 
 
