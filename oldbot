@@ -1,0 +1,427 @@
+import json
+import requests
+import time
+import urllib
+import random
+
+#following line is for persistent voting acros chat sessions
+import sqlite3
+
+
+from datetime import datetime
+
+
+
+#next  lines are global vairables
+
+
+pc_vardi=['/.Kaiju', '/.Ēnaudējs', '/.Ahti', '/.Lāsts', '/.Džims']
+TOKEN = "763523696:AAEREYsuGeR9287nBbulA4-wafRaAA6-ZVw"
+URL = "https://api.telegram.org/bot{}/".format(TOKEN)
+
+
+
+#nakosie ir funkciju saisinajumi datubazei
+conn = sqlite3.connect('votingdb1.db')
+c = conn.cursor()
+
+
+## bloks par inline keyboard
+
+
+import telepot
+from telepot.loop import MessageLoop
+from telepot.namedtuple import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove
+
+bot = telepot.Bot(TOKEN)
+def inline_keyboard(chat_id):
+    i_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                   [InlineKeyboardButton(text='Ahti', callback_data='ahti')],
+                   [InlineKeyboardButton(text='Lāsts', callback_data='lasts')],
+                   [InlineKeyboardButton(text='Ēnaudējs', callback_data='enaudejs')],
+                   [InlineKeyboardButton(text='Džims', callback_data='dzims')],
+                   [InlineKeyboardButton(text='Kaiju', callback_data='kaiju')]
+               ])
+
+    last_session=lastSession(conn)[0]
+    vote_text='Balso par MVP pēdējā sesijā Nr.'+str(last_session)
+    bot.sendMessage(chat_id, vote_text, reply_markup=i_keyboard)
+
+
+
+
+###
+
+
+#Problema1: glaba visu taja pasa datubaze cilvekam kuram ir otrs mans bots; pagaidam datubazi shim nevajag
+#Ideja1: Apvienot viena bota 3 opcijas: charsheet link saving; dice rolling; voting; book links?
+#Idejai1: derētu tās komandas /help, /rules, /roll /charsheet, varbūt ar zīmi /summon_bot viņu izsauc un tad ir pogas ko nospiest
+
+#    "update_id": 754120131,
+#    "message": {
+#        "message_id": 13394,
+#        "from": {
+#            "id": 2042772,
+#            "is_bot": false,
+#            "first_name": "Dzanis",
+#            "username": "dzanis"
+#        },
+#        "chat": {
+#            "id": -1001074947222,
+#            "title": "D&D party v.2.0.",
+#            "type": "supergroup"
+
+
+
+
+
+
+
+
+
+#this function gets an url and converts it to string, result is content (variable)
+
+
+def get_url(url):
+    response = requests.get(url)
+    content = response.content.decode("utf8")
+    return content
+
+#this function gets json result and deciphers it
+def get_json_from_url(url):
+    content = get_url(url)
+    js = json.loads(content)
+    return js
+
+#this function gets updates= messages sent to our bot
+def get_updates(offset=None):
+    url = URL + "getUpdates?timeout=100"
+    if offset:
+        url += "&offset={}".format(offset)
+    js = get_json_from_url(url)
+    return js
+
+
+
+def get_last_update_id(updates):
+    update_ids = []
+    for update in updates["result"]:
+        update_ids.append(int(update["update_id"]))
+    return max(update_ids)
+
+
+#explode dice funkcija
+# Roll a single dice, exploding as needed
+def roll_and_explode(diceType):
+    current_roll = random.randint(1,diceType)
+    running_total = current_roll
+    # Keep rolling until we don't get a 10
+    while current_roll == diceType:
+        current_roll = random.randint(1,diceType)
+        running_total += current_roll
+    return running_total
+
+#shis ir meshanas rezultats
+def rollDice(diceCount,diceType,diceAce=0):
+    result=[]
+    if diceAce==0:
+        for a in range(diceCount):
+            result.append(random.randint(1,diceType))
+
+        return result
+    else:
+        result=[roll_and_explode(diceType) for i in range(diceCount)]
+        return result
+
+
+
+#shis ir prieksh inline keyboard
+def on_callback_query(msg):
+
+    query_id=msg["callback_query"]["id"]
+    from_id=msg["callback_query"]["from"]["id"]
+    query_data=msg["callback_query"]["data"]
+
+
+    print('Callback Query:', query_id, from_id, query_data)
+    bot.answerCallbackQuery(query_id, text='Nobalsots')
+
+#voting pieraksta bloks
+    votingSession=(lastSession(conn)[0])
+    c.execute("""SELECT chat_id
+                ,vote_session
+            FROM voting
+            WHERE chat_id=?
+            AND vote_session=?""",
+             (from_id, votingSession))
+    ############### kautkada problema
+
+    unique_check = c.fetchone()
+    if unique_check:
+        send_message("Balsojums nepieņemts. Vienreiz jau balsoji par šo sesiju", from_id)
+    else:
+        send_message("Balsojums pieņemts", from_id)
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        vote_entry=(from_id,votingSession,query_data,2,0,timestamp)
+        #database parameters: chatid,sessionid,pcname,votevalue,reserve
+        c.execute('INSERT INTO voting VALUES (null,?,?,?,?,?,?)', vote_entry)
+        conn.commit()
+
+
+#shaadi izskatas callback query update
+#{"ok":true,"result":[{"update_id":17536810,
+#"callback_query":{"id":"8773642215930039","from":{"id":2042772,"is_bot":false,"first_name":"Dzanis","username":"dzanis","language_code":"en"},"message":{"message_id":562,"from":{"id":763523696,"is_bot":true,"first_name":"Uzmet\u0113js","username":"dzanis_dice_bot"},"chat":{"id":2042772,"first_name":"Dzanis","username":"dzanis","type":"private"},"date":1545226377,"text":"Balso par MVP"},"chat_instance":"-5466091595442226601","data":"enaudejs"}}]}
+
+#shaadi izskatas message
+#{"ok":true,"result":[{"update_id":17536811,
+#"message":{"message_id":564,"from":{"id":2042772,"is_bot":false,"first_name":"Dzanis","username":"dzanis","language_code":"en"},"chat":{"id":2042772,"first_name":"Dzanis","username":"dzanis","type":"private"},"date":1545226770,"text":"check"}}]}
+
+
+def vote_results():
+    #sheit vel jauzraksta results logika: ja nav pabeigta balsošana, tad kurš nav nobalsojis
+    return True
+
+
+
+
+
+#sho ir kartigi japarveido
+def handle_updates(updates):
+    # rindinjas ar ## ir tas, kuras ieraksta konkreto chatu datubaze un ar ### kas tikushas mainitas botam
+    for update in updates["result"]:
+        try:
+            text = update["message"]["text"]
+        except KeyError:
+            text=''
+        if "callback_query" in update:
+            print("ttt")
+            on_callback_query(update)
+        elif "edited_message" in update:
+            print("msg edit")
+
+        else:
+            chat = update["message"]["chat"]["id"]
+
+        if text == "/viss":
+            send_message("Izvēlies, ko izdzēst", chat) ###
+        elif text == "/start":
+            send_message("šis robots šobrīd ļauj mest kauliņus ar formātu /roll xdx un /roll xdx!+x un lietot /vote balsošanai par MVP atsevišķā čatā", chat)
+
+# Tālāk seko bloks, lai ierobežotu balsošanu tikai uz pareizajiem kanāliem
+
+        elif text.startswith("/.") and chat==-1001074947222:
+            send_message("Balsošanu ar/vote dariet indivduālajā čatā ar botu",chat)
+        elif text=="/vote" and chat==-1001074947222:
+            send_message("Balsošanu ar/vote dariet indivduālajā čatā ar botu",chat)
+        elif text.startswith("/.") and chat==2042772:
+            send_message("Balsošanu ar/vote dariet indivduālajā čatā ar botu",chat)
+        elif text=="/vote" and chat==2042772:
+            send_message("Balsošanu ar/vote dariet indivduālajā čatā ar botu",chat)
+
+
+        elif text=="tests" and chat==2042772:
+            inline_keyboard(chat)
+            send_message("test testēts",chat)
+
+
+
+# Bloks sesijas nr nomaiņai
+
+        elif text.startswith("/sessionnr") and chat==2042772:
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            vote_entry=(chat,text[11:],"GM",0,0,timestamp)
+            c.execute('INSERT INTO voting VALUES (null,?,?,?,?,?,?)', vote_entry)
+            conn.commit()
+            message_nrx="Sesijas Nr. nomainīts uz "+str(text[10:])
+            send_message(message_nrx,chat)
+
+#laikam jaievada shis ka jauns ieraksts datubaze, un pec tam generejot sesijas id jalieto maksimalais sesijas id ar sho ierkastu no datubazes
+#datubazei velak vajag indeksu
+
+#        elif text.startswith("/sessionnr"):
+#            message_nr="Sesija Nr."+str(sesijasNR)
+#            send_message(message_nr,chat)
+        elif text.startswith("/vote"):
+            inline_keyboard(chat)
+        elif text.startswith("/."):
+            votingSession=(lastSession(conn)[0])
+            c.execute("""SELECT chat_id
+                          ,vote_session
+                   FROM voting
+                   WHERE chat_id=?
+                       AND vote_session=?""",
+                (chat, votingSession))
+            unique_check = c.fetchone()
+
+            if unique_check:
+                send_message("Balsojums nepieņemts. Vienreiz jau balsoji par šo sesiju", chat)
+            else:
+                send_message("Balsojums pieņemts", chat)
+                timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+                vote_entry=(chat,votingSession,text[2:],2,0,timestamp)
+                #database parameters: chatid,sessionid,pcname,votevalue,reserve
+                c.execute('INSERT INTO voting VALUES (null,?,?,?,?,?,?)', vote_entry)
+                conn.commit()
+        elif text.startswith("/roll"):
+            userText=text[6:]
+            try:
+                userInput=userText.lower()
+                if int((userInput.split('d')[0]))>100:
+                    send_message("Kauliņu skaits pārsniedz žaka limitu, mēģini mazāk.",chat)
+                elif userInput.find("+")==-1 and userInput.find("-")==-1 and userInput.find("!")==-1:
+                    diceCount=int(userInput.split('d')[0])
+                    diceType=int(userInput.split('d')[1])
+                    resultFinal=rollDice(diceCount,diceType)
+                    messageX=str(resultFinal) ## upgrade
+                    messageY=str("Sum: "+ str(sum(resultFinal)))## upgrade
+                    send_message(messageX,chat)
+                    send_message(messageY,chat)
+                elif userInput.find("+")!=-1 and userInput.find("-")==-1 and userInput.find("!")==-1:
+                    diceCount=int(userInput.split('d')[0])
+                    diceAddition=int(userInput.split('+')[1])
+                    diceType=int(userInput[int(userInput.find("d"))+1:int(userInput.find("+"))])
+                    resultIntermediate=rollDice(diceCount,diceType)
+                    resultFinal=[x+diceAddition for x in resultIntermediate]
+                    messageX="Roll: "+str(resultIntermediate)+", Modified roll: "+str(resultFinal) ## upgrade
+                    messageY=str("Sum of roll +modifier once: "+ str(sum(resultIntermediate)+diceAddition))## upgrade
+                    send_message(messageX,chat)
+                    send_message(messageY,chat)
+                elif userInput.find("+")==-1 and userInput.find("-")!=-1 and userInput.find("!")==-1:
+                    diceCount=int(userInput.split('d')[0])
+                    diceSubtraction=int(userInput.split('-')[1])
+                    diceType=int(userInput[int(userInput.find("d"))+1:int(userInput.find("-"))])
+                    resultIntermediate=rollDice(diceCount,diceType)
+                    resultFinal=[x-diceSubtraction for x in resultIntermediate]
+                    messageX="Roll: "+str(resultIntermediate)+", Modified roll: "+str(resultFinal) ## upgrade
+                    messageY=str("Sum of roll -modifier once: "+ str(sum(resultIntermediate)-diceSubtraction))## upgrade
+                    send_message(messageX,chat)
+                    send_message(messageY,chat)
+                elif userInput.find("+")==-1 and userInput.find("-")==-1 and userInput.find("!")!=-1:
+                    diceCount=int(userInput.split('d')[0])
+                    diceType=int(userInput[int(userInput.find("d"))+1:int(userInput.find("!"))])
+                    resultFinal=rollDice(diceCount,diceType,1)
+                    messageX=str(resultFinal) ## upgrade
+                    messageY=str("Sum: "+ str(sum(resultFinal)))## upgrade
+                    send_message(messageX,chat)
+                    send_message(messageY,chat)
+                elif userInput.find("+")==-1 and userInput.find("-")!=-1 and userInput.find("!")!=-1:
+                    diceCount=int(userInput.split('d')[0])
+                    diceSubtraction=int(userInput.split('-')[1])
+                    diceType=int(userInput[int(userInput.find("d"))+1:int(userInput.find("!"))])
+                    resultIntermediate=rollDice(diceCount,diceType,1)
+                    resultFinal=[x-diceSubtraction for x in resultIntermediate]
+                    messageX="Roll: "+str(resultIntermediate)+", Modified roll: "+str(resultFinal) ## upgrade
+                    messageY=str("Sum of roll -modifier once: "+ str(sum(resultIntermediate)-diceSubtraction))## upgrade
+                    send_message(messageX,chat)
+                    send_message(messageY,chat)
+                elif userInput.find("+")!=-1 and userInput.find("-")==-1 and userInput.find("!")!=-1:
+                    diceCount=int(userInput.split('d')[0])
+                    diceAddition=int(userInput.split('+')[1])
+                    diceType=int(userInput[int(userInput.find("d"))+1:int(userInput.find("!"))])
+                    resultIntermediate=rollDice(diceCount,diceType,1)
+                    resultFinal=[x+diceAddition for x in resultIntermediate]
+                    messageX="Roll: "+str(resultIntermediate)+", Modified roll: "+str(resultFinal) ## upgrade
+                    messageY=str("Sum of roll +modifier once: "+ str(sum(resultIntermediate)+diceAddition))## upgrade
+                    send_message(messageX,chat)
+                    send_message(messageY,chat)
+            except (IndexError, ValueError):
+                send_message("Nepareizs formāts",chat)
+        elif text=="/results":
+            resultingVote=str(countVotes(conn))
+            send_message(resultingVote,chat)
+        elif text.startswith("/"):
+            continue
+
+#            db.add_item(text, chat) ##
+#            items = db.get_items(chat)##
+#            message = "\n".join(items)
+#            send_message(message, chat)
+#        elif text in items:
+#            db.delete_item(text, chat) ##
+#            items = db.get_items(chat) ##
+#            keyboard = build_keyboard(items)
+#            send_message("Izvēlies, ko izdzēst", chat, keyboard)
+        else:
+            continue
+
+#            db.add_item(text, chat) ##
+#            items = db.get_items(chat)##
+#            message = "\n".join(items)
+#            send_message(message, chat)
+
+#shi funkcija tikai saskaita esosas balsis datubaze
+#partaisit shito ka list sarakstu maybe, bet internally funckijai
+def countVotes(conn):
+    pedejaSesija=lastSession(conn)
+    c.execute("SELECT * FROM voting WHERE vote_session=?", pedejaSesija)
+    sumAhti=0
+    sumKaiju=0
+    sumDzims=0
+    sumEnaudejs=0
+    sumLasts=0
+    rows = c.fetchall()
+    for row in rows:
+        if row[2]=='Ahti':
+            sumAhti+=row[3]
+        elif row[2]=='Kaiju':
+            sumKaiju+=row[3]
+        elif row[2]=='Džims':
+            sumDzims+=row[3]
+        elif row[2]=='Ēnaudējs':
+            sumEnaudejs+=row[3]
+        elif row[2]=='Lāsts':
+            sumLasts+=row[3]
+    pc_vardi_voting=[['Kaiju',sumKaiju],['Ēnaudējs',sumEnaudejs,],['Ahti',sumAhti], ['Lāsts',sumLasts], ['Džims',sumDzims]]
+    voteVictor=max(pc_vardi_voting, key=lambda x: x[1])
+
+    return "MVP no balsošanas pēdējā sesijā: ", voteVictor, "    šis pilnais atšifrējums tikai testa režīmā:", pc_vardi_voting
+
+def lastSession(conn):
+    GM_id=['GM', 'C']
+    c.execute("SELECT max(vote_session) FROM voting WHERE vote_pc in"+str(tuple(GM_id)))
+    last_session_id=c.fetchone()
+    return last_session_id
+
+
+
+# this function returns a tuple of the chat_id which identifies the specific chat between
+# Bot and the person who sent the message, and the text, which is the message itself.
+def get_last_chat_id_and_text(updates):
+    num_updates = len(updates["result"])
+    last_update = num_updates - 1
+    text = updates["result"][last_update]["message"]["text"]
+    chat_id = updates["result"][last_update]["message"]["chat"]["id"]
+    return (text, chat_id)
+
+# takes a text we want to send and chat id where we want to send
+def send_message(text, chat_id, reply_markup=None):
+    text = urllib.parse.quote_plus(text)
+    url = URL + "sendMessage?text={}&chat_id={}&parse_mode=Markdown".format(text, chat_id)
+    if reply_markup:
+        url += "&reply_markup={}".format(reply_markup)
+    get_url(url)
+
+#shi funkcija ir lai paradas itemi nevis tikai text
+def build_keyboard(items):
+    keyboard = [[item] for item in items]
+    reply_markup = {"keyboard":keyboard, "one_time_keyboard": True}
+    return json.dumps(reply_markup)
+
+
+
+
+def main():
+    last_update_id = None
+    while True:
+        updates = get_updates(last_update_id)
+        if len(updates["result"]) > 0:
+            last_update_id = get_last_update_id(updates) + 1
+            handle_updates(updates)
+        time.sleep(0.5)
+
+
+if __name__ == '__main__':
+    main()
+
+
