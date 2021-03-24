@@ -70,7 +70,7 @@ conn.commit()
 ##shis pilnais nepbuliski
 
 balsis = 90
-balsu_saraksts = {'xx': 1300, 'yy': 13500, 'zz': 3500}
+balsu_saraksts = {'2042772': 1300, 'yy': 13500, 'zz': 3500}
 chat_saraksts = {'dzanis': '2042772'}
 
 def lastSession():
@@ -88,7 +88,10 @@ def countvotes():
     votes = []
     for opcija in range(4):
         c.execute("SELECT sum(balsu_skaits) FROM balsis WHERE balsojuma_id = ? AND balsojuma_opcija = ?", (balsojuma_nr, opcija) )
-        votes.append(c.fetchone()[0])
+        if c.fetchone()[0] is None:
+             votes.append(0)
+        else:
+             votes.append(c.fetchone()[0])
     print(votes)
     return votes
 
