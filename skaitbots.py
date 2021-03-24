@@ -101,7 +101,7 @@ def start(update: Update, _: CallbackContext) -> None:
     """Inform user about what this bot can do"""
     if update.message.chat['type'] == 'private':
         update.message.reply_text(
-        'Izvēlēties /balsot lai balsotu un /rezultati lai apskatītu rezultātus, bet tas otrais variants vel nav pabeigts.'
+        'Izvēlēties /balsot lai balsotu un /rezultati lai apskatītu rezultātus, /manasbalsis, lai redzetu savu balsu skaitu.'
         )
     else:
         update.message.reply_text(
@@ -182,7 +182,7 @@ def rezultati(update: Update, context: CallbackContext) -> None:
     
 
 def jauns_balsojums(update: Update, context: CallbackContext) -> None:
-    print(update.message.chat['text'])
+   # print(update.message.chat['text'])
     print(update.message.chat['id'])
     print(update.message.chat['type'])
     if update.message.chat['id'] == '2042772':
@@ -201,15 +201,17 @@ def manasbalsis(update: Update, context: CallbackContext) -> None:
     if update.message.chat['type'] == 'private':
         print("manas balsis")
         print(update.message.chat)
-        for i in range(len(balsu_saraksts)):
-            print(balsu_saraksts[i])
-            if balsu_saraksts[i] == update.message.chat['id']:
-                voicecount = balsu_saraksts[update.message.chat['id']]
-                print(voicecount)
-            else: 
-                voicecount = 0
 
-        text = "Tev ir " + str(votecount) + "no kopējām " + str(balsis) + "balsīm, t.i., " + str(round(100 * int(votecount) / balsis, 2))+"%"
+        for i in balsu_saraksts.keys():
+            print(i)
+            if str(i) == str(update.message.chat['id']):
+                votecount = balsu_saraksts[i]
+                print(votecount)
+                break
+            else: 
+                votecount = 0
+
+        text = "Tev ir " + str(votecount) + " no kopējām " + str(balsis) + " balsīm, t.i., " + str(round(100 * int(votecount) / balsis, 2))+"%"
         update.message.reply_text(text)
     else:
         update.message.reply_text(
@@ -223,7 +225,7 @@ def help_handler(update: Update, _: CallbackContext) -> None:
     """Display a help message"""
     if update.message.chat['type'] == 'private':
         update.message.reply_text(
-        'Izvēlēties /balsot lai balsotu un /rezultati lai apskatītu rezultātus, bet tas otrais variants vel nav pabeigts.'
+        'Izvēlēties /balsot lai balsotu un /rezultati lai apskatītu rezultātus, /manasbalsis, lai redzetu savu balsu skaitu.'
         )
     else:
         update.message.reply_text(
