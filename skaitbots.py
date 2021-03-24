@@ -67,10 +67,8 @@ c.execute("INSERT INTO balsis VALUES (null, ?, ?, ?, ?, ?, ?)", sql_entry)
 conn.commit()
 
 
-##shis testam
-balsis_dz = 20
-balsis_rin = 30
-balsis_rai = 40
+##shis pilnais nepbuliski
+
 balsis = 90
 balsu_saraksts = {'xx': 1300, 'yy': 13500, 'zz': 3500}
 chat_saraksts = {'dzanis': '2042772'}
@@ -82,10 +80,27 @@ def lastSession():
     last_session_id=c.fetchone()
     return last_session_id
 
+def countvotes():
+    #sheit vajadzes funkciju, lai saskaita visus četrus ablsojumus un izdod četrus rezultātus ārā
+    balsojuma_nr = lastSession()
+    conn = sqlite3.connect('skaititajs.db')
+    c = conn.cursor()
+    votes = []
+    for opcija in range(4):
+        c.execute("SELECT sum(balsu_skaits) FROM balsis WHERE balsojuma_id = ? AND balsojuma_opcija = ?", (balsojuma_nr, opcija) )
+        votes.append(c.fetchone()[0])
+    print(votes)
+    return votes
+
 def start(update: Update, _: CallbackContext) -> None:
     """Inform user about what this bot can do"""
-    update.message.reply_text(
+    if update.message.chat['type'] == 'private':
+        update.message.reply_text(
         'Izvēlēties /balsot lai balsotu un /rezultati lai apskatītu rezultātus, bet tas otrais variants vel nav pabeigts.'
+        )
+    else:
+        update.message.reply_text(
+        'Pašu balsošanu vajag veikt ar robotu individuālā čatā, uzspied viņam, ieej un uzraksti /start, šeit var tikai apskatīties /rezultati'
         )
 
 def echo(update: Update, _: CallbackContext) -> None:
@@ -138,14 +153,17 @@ def rezultati(update: Update, context: CallbackContext) -> None:
     one = ReplyKeyboardRemove(remove_keyboard = True)
     print(update.message.chat['id'])
     print(update.message.chat['type'])
-    #ja tas esmu es, tad jaieliek jauns id, viens jauns ieraksts ar 0 balsīm un balsojuma temats jauns
-    conn = sqlite3.connect('skaititajs.db')
-    c = conn.cursor()
-    c.execute("SELECT sum(balsu_skaits) FROM balsis WHERE balsojuma_id = 1" )
-    test=c.fetchone()[0]
-    result = 100 * test / balsis
-    text = str(round(result, 2))+"%"
+
+    votes = countvotes()
+    
+    votes1 = str(round(100 * int(votes[0]) / balsis, 2))+"%"
+    votes2 = str(round(100 * int(votes[1]) / balsis, 2))+"%"
+    votes3 = str(round(100 * int(votes[2]) / balsis, 2))+"%"
+    votes4 = str(round(100 * int(votes[3]) / balsis, 2))+"%"
+    text = "Par pirmo opciju nobalsojuši " + votes1 + ", par otro " + votes2 + ", par trešo " + votes3 + ", par ceturto " + votes4
     update.message.reply_text(text, reply_markup=one)
+    
+
 def jauns_balsojums(update: Update, context: CallbackContext) -> None:
 
     print(update.message.chat['id'])
@@ -157,8 +175,14 @@ def jauns_balsojums(update: Update, context: CallbackContext) -> None:
 
 def help_handler(update: Update, _: CallbackContext) -> None:
     """Display a help message"""
-    update.message.reply_text("Use /quiz, /poll or /preview to test this bot.")
-
+    if update.message.chat['type'] == 'private':
+        update.message.reply_text(
+        'Izvēlēties /balsot lai balsotu un /rezultati lai apskatītu rezultātus, bet tas otrais variants vel nav pabeigts.'
+        )
+    else:
+        update.message.reply_text(
+        'Pašu balsošanu vajag veikt ar robotu individuālā čatā, uzspied viņam, ieej un uzraksti /start, šeit var tikai apskatīties /rezultati'
+        )
 
 def main() -> None:
     # Create the Updater and pass it your bot's token.
