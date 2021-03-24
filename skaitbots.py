@@ -145,13 +145,25 @@ def echo(update: Update, _: CallbackContext) -> None:
 
 def poll(update: Update, context: CallbackContext) -> None:
     """Sends a predefined poll"""
+    print(update.message.chat)
+    if update.message.chat['type'] == 'private':
+        conn = sqlite3.connect('skaititajs.db')
+        c = conn.cursor()
+        c.execute("SELECT jautajums FROM balsis WHERE balsojuma_id = (SELECT MAX(balsojuma_id) FROM balsis)" )
+        jautajums=c.fetchone()
+                
+        
+        reply_text = str(jautajums)
+        update.message.reply_text(reply_text, reply_markup=markup)
+    else:
+        update.message.reply_text(
+        'Pašu balsošanu vajag veikt ar robotu individuālā čatā, uzspied viņam, ieej un uzraksti /start, šeit var tikai apskatīties /rezultati'
+        )
 
-    reply_text = "Jautājums balsošanai (Nr.x): Vai atbalstāt investīciju piedāvājumu, kā aprakstīja dobis kur kaut ko iegādās un kaut kas notiks?"
-    update.message.reply_text(reply_text, reply_markup=markup)
 
 def rezultati(update: Update, context: CallbackContext) -> None:
     one = ReplyKeyboardRemove(remove_keyboard = True)
-    print(update.message.chat['id'])
+    print(update.message.chat)
     print(update.message.chat['type'])
 
     votes = countvotes()
@@ -165,10 +177,39 @@ def rezultati(update: Update, context: CallbackContext) -> None:
     
 
 def jauns_balsojums(update: Update, context: CallbackContext) -> None:
-
+    print(update.message.chat['text'])
     print(update.message.chat['id'])
     print(update.message.chat['type'])
+    if update.message.chat['id'] == '2042772':
+        update.message.reply_text("ok, strada")
+        ###            vote_entry=(chat,text[11:],"GM",0,0,timestamp)
+         #newSession = lastSession() + 1
+            #c.execute('INSERT INTO voting VALUES (null,?,?,?,?,?,?)', vote_entry)
+         #   conn.commit()
+        #update.message.reply_text("nomainits uz jaunu jautajumu")
+    else:
+        a = 1
+        ## veelak in the list
     #ja tas esmu es, tad jaieliek jauns id, viens jauns ieraksts ar 0 balsīm un balsojuma temats jauns
+
+def manasbalsis(update: Update, context: CallbackContext) -> None:
+    if update.message.chat['type'] == 'private':
+        print("manas balsis")
+        print(update.message.chat)
+        for i in range(len(balsu_saraksts)):
+            print(balsu_saraksts[i])
+            if balsu_saraksts[i] == update.message.chat['id']:
+                voicecount = balsu_saraksts[update.message.chat['id']]
+                print(voicecount)
+            else: 
+                voicecount = 0
+
+        text = "Tev ir " + str(votecount) + "no kopējām " + str(balsis) + "balsīm, t.i., " + str(round(100 * int(votecount) / balsis, 2))+"%"
+        update.message.reply_text(text)
+    else:
+        update.message.reply_text(
+        'Šo funkciju skaties individuāli ar botu'
+        )
 
 
 
@@ -194,6 +235,7 @@ def main() -> None:
     dispatcher.add_handler(CommandHandler('help', help_handler))
     dispatcher.add_handler(CommandHandler('jauns', jauns_balsojums))
     dispatcher.add_handler(CommandHandler('rezultati', rezultati))
+    dispatcher.add_handler(CommandHandler('manasbalsis', manasbalsis))
 
 
 
