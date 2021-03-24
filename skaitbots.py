@@ -72,7 +72,7 @@ balsis_dz = 20
 balsis_rin = 30
 balsis_rai = 40
 balsis = 90
-balsu_saraksts = {'2042772': 1300, 'dobis': 13500, 'ringus': 3500}
+balsu_saraksts = {'xx': 1300, 'yy': 13500, 'zz': 3500}
 chat_saraksts = {'dzanis': '2042772'}
 
 def lastSession():
