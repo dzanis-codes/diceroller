@@ -1,3 +1,12 @@
+## TODO
+## 1. akciju saraksts ar chatid
+## 2. publiskais čats redz tikai info ka jaiet balsot individuali un rezultatus
+## 3. rezultatos redz sarakstu, kas nav nobalsojusi
+## 4. /manasbalsis funkcionalitate redzet savu skaitu pret kopejo
+## 5. /mainitnalsi funkcionalitate
+## 6. /jaunsbalsojums funckionalitate
+
+
 import logging
 import time
 import sqlite3
@@ -63,7 +72,8 @@ balsis_dz = 20
 balsis_rin = 30
 balsis_rai = 40
 balsis = 90
-balsu_saraksts = {'2042772': 20, 'xx': 30, 'xxxy': 40}
+balsu_saraksts = {'2042772': 1300, 'dobis': 13500, 'ringus': 3500}
+chat_saraksts = {'dzanis': '2042772'}
 
 def lastSession():
     conn = sqlite3.connect('skaititajs.db')
