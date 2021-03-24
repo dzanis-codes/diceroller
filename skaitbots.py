@@ -30,12 +30,12 @@ logger = logging.getLogger(__name__)
 
 reply_keyboard = [
     ['1. opcija PAR', '2.opcija PRET'],
-    ['3. Taureņa opcija kautkas alternatīvs'],
+    ['3. Taureņa opcija kautkas alternatīvs', '4. atturos/par maz info'],
 ]
 markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
 
 keyboard_text = ['1. opcija PAR', '2.opcija PRET',
-    '3. Taureņa opcija kautkas alternatīvs']
+    '3. Taureņa opcija kautkas alternatīvs', '4. atturos/par maz info']
 
 conn = sqlite3.connect('skaititajs.db')
 c = conn.cursor()
@@ -152,7 +152,7 @@ def help_handler(update: Update, _: CallbackContext) -> None:
 
 def main() -> None:
     # Create the Updater and pass it your bot's token.
-    updater = Updater("1741893729:AAFH5Nf4XeTbdSoqx6RJoi-pzzR_3nr9p0A")
+    updater = Updater("token")
     dispatcher = updater.dispatcher
     dispatcher.add_handler(CommandHandler('start', start))
     dispatcher.add_handler(CommandHandler('balsot', poll))
