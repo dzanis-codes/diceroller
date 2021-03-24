@@ -88,10 +88,12 @@ def countvotes():
     votes = []
     for opcija in range(4):
         c.execute("SELECT sum(balsu_skaits) FROM balsis WHERE balsojuma_id = ? AND balsojuma_opcija = ?", (balsojuma_nr, opcija) )
-        if c.fetchone()[0] is None:
+        result = c.fetchone()
+
+        if result[0] is None:
              votes.append(0)
         else:
-             votes.append(c.fetchone()[0])
+             votes.append(result[0])
     print(votes)
     return votes
 
@@ -153,7 +155,7 @@ def poll(update: Update, context: CallbackContext) -> None:
         conn = sqlite3.connect('skaititajs.db')
         c = conn.cursor()
         c.execute("SELECT jautajums FROM balsis WHERE balsojuma_id = (SELECT MAX(balsojuma_id) FROM balsis)" )
-        jautajums=c.fetchone()
+        jautajums=c.fetchone()[0]
                 
         
         reply_text = str(jautajums)
