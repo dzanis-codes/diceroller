@@ -39,12 +39,12 @@ logger = logging.getLogger(__name__)
 
 reply_keyboard = [
     ['1. opcija PAR', '2.opcija PRET'],
-    ['3. Taureņa opcija kautkas alternatīvs', '4. atturos/par maz info'],
+    ['3. atturos/par maz info'],
 ]
 markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
 
 keyboard_text = ['1. opcija PAR', '2.opcija PRET',
-    '3. Taureņa opcija kautkas alternatīvs', '4. atturos/par maz info']
+    '3. atturos/par maz info']
 
 conn = sqlite3.connect('skaititajs.db')
 c = conn.cursor()
@@ -187,13 +187,26 @@ def jauns_balsojums(update: Update, context: CallbackContext) -> None:
     print(update.message.chat['type'])
     if update.message.chat['id'] == '2042772':
         update.message.reply_text("ok, strada")
+        update.message.reply_text(context)
+        balsojuma_nr = lastSession()
+        jauns_nr = balsouma_nr + 1
+        jauns_jautajums = context
+        balsotajs = 0
+        balsu_skaits = 0
+        balsojuma_opcija = 0
+        timestamp = 0
+        conn = sqlite3.connect('skaititajs.db')
+        c = conn.cursor()
+        sql_entry = (jauns_nr, str(jauns_jautajums), balsotajs, balsu_skaits, balsojuma_opcija, timestamp)
+        c.execute("INSERT INTO balsis VALUES (null, ?, ?, ?, ?, ?, ?)", sql_entry)
+        conn.commit()
         ###            vote_entry=(chat,text[11:],"GM",0,0,timestamp)
          #newSession = lastSession() + 1
             #c.execute('INSERT INTO voting VALUES (null,?,?,?,?,?,?)', vote_entry)
          #   conn.commit()
         #update.message.reply_text("nomainits uz jaunu jautajumu")
     else:
-        a = 1
+        update.message.reply_text("Pagaidām jaunus balsojumus veido džanis. Because he can.")
         ## veelak in the list
     #ja tas esmu es, tad jaieliek jauns id, viens jauns ieraksts ar 0 balsīm un balsojuma temats jauns
 
@@ -229,7 +242,8 @@ def help_handler(update: Update, _: CallbackContext) -> None:
         )
     else:
         update.message.reply_text(
-        'Pašu balsošanu vajag veikt ar robotu individuālā čatā, uzspied viņam, ieej un uzraksti /start, šeit var tikai apskatīties /rezultati'
+        '''Pašu balsošanu vajag veikt ar robotu individuālā čatā. Telefonā uzspied uz bota ikonas (izskatās pēc robota), uzspied viņam un tad būs privāta čata uzsākšanas ikona, ieej tur un tad raksti /start. Datorā uzspied uz bota ikonas ar labo peles taustiņu un izvēlies sākt jaunu čatu.
+            . Šeit kopējā čatā var tikai apskatīties /rezultati'''
         )
 
 def main() -> None:
